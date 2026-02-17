@@ -10,4 +10,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   await app.listen(app.get(ConfigService).getOrThrow('PORT'));
 }
-bootstrap();
+void bootstrap().catch((error: unknown) => {
+  console.error('Application failed to start', error);
+  process.exit(1);
+});
