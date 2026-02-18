@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { CreateUserRequest } from './dto/create-user.request';
 import { PrismaService } from '../prisma/prisma.service';
@@ -10,17 +15,27 @@ export class UsersService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async createUser(request: CreateUserRequest): Promise<UserResponse> {
-    const newUser = await this.prismaService.user.create({
-      data: {
-        name: request.name,
-        email: request.email,
-        password: await bcrypt.hash(request.password, 10),
-      },
-      omit: {
-        password: true,
-      },
-    });
-    return newUser;
+    try {
+      const newUser = await this.prismaService.user.create({
+        data: {
+          name: request.name,
+          email: request.email,
+          password: await bcrypt.hash(request.password, 10),
+        },
+        omit: {
+          password: true,
+        },
+      });
+      return newUser;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Email already exists');
+      }
+      throw error;
+    }
   }
 
   async updateUser(
